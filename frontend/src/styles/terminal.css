@@ -1,0 +1,318 @@
+/*
+ * terminal.css — Silo's TUI design system
+ *
+ * CONCEPT: We're rendering a terminal UI inside a desktop window.
+ * Everything is monospace. Borders use box-drawing characters (┌─┐│└─┘).
+ * Colors are semantic: green=allowed/active, red=blocked, blue=interactive.
+ * No animations. No transitions. Instant state changes.
+ *
+ * The CSS variables below are the single source of truth for the
+ * entire app's visual identity. Every component references these.
+ */
+
+/* ── Reset ────────────────────────────────────────────────── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ── CSS Variables (Design Spec Color Palette) ────────────── */
+:root {
+  /* Backgrounds — greyish terminal feel, not pure black */
+  --bg-primary: #1a1d23;    /* main background — warm dark grey */
+  --bg-secondary: #22262e;  /* cards, panels */
+  --bg-tertiary: #2d323b;   /* hover states, active items */
+
+  /* Text — 3 tiers for hierarchy */
+  --text-primary: #f0f6fc;    /* headings, important text */
+  --text-secondary: #c9d1d9;  /* body text */
+  --text-dim: #484f58;        /* borders, disabled, hints */
+
+  /* Semantic colors — each has ONE purpose */
+  --accent-green: #7ee787;   /* allowed, active, success — light lime green */
+  --accent-blue: #58a6ff;    /* interactive elements, links */
+  --accent-yellow: #d29922;  /* warnings, caution */
+  --accent-red: #f85149;     /* blocked, destructive, errors */
+  --accent-purple: #bc8cff;  /* special/accent */
+
+  /* Borders */
+  --border: #30363d;
+
+  /* Font — monospace everything, as the spec demands */
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+
+  /* Spacing — consistent 8px grid */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+}
+
+/* ── Base Styles ──────────────────────────────────────────── */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  /* Prevent text selection — this is an app, not a document */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── Typography ───────────────────────────────────────────── */
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-dim { color: var(--text-dim); }
+.text-green { color: var(--accent-green); }
+.text-blue { color: var(--accent-blue); }
+.text-yellow { color: var(--accent-yellow); }
+.text-red { color: var(--accent-red); }
+.text-purple { color: var(--accent-purple); }
+
+/* ── TUI Box ────────────────────────────────────────────────
+ * The fundamental container. Uses real box-drawing borders
+ * rendered via CSS border (not actual Unicode chars — those
+ * would be hard to make responsive). The visual effect is
+ * achieved through 1px solid borders + the right colors.
+ */
+.tui-box {
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ── TUI Header ─────────────────────────────────────────────
+ * Top bar of every screen. Shows breadcrumb path + clock.
+ * The "■ silo" prefix is the app identity marker.
+ */
+.tui-header {
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-primary);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.tui-header__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.tui-header__icon {
+  color: var(--accent-green);
+}
+
+.tui-header__clock {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+/* ── TUI Footer ─────────────────────────────────────────────
+ * Bottom bar showing keyboard shortcuts.
+ * This is how TUI apps communicate available actions.
+ * Format: [key] action  [key] action  ...
+ */
+.tui-footer {
+  padding: var(--space-sm) var(--space-md);
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.tui-footer__action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.tui-footer__key {
+  color: var(--accent-blue);
+}
+
+/* ── TUI Content ──────────────────────────────────────────── */
+.tui-content {
+  flex: 1;
+  padding: var(--space-md);
+  overflow-y: auto;
+}
+
+/* ── TUI Section Label ──────────────────────────────────────
+ * Uppercase labels like "WORKSPACES", "TODAY", "LOCK TYPE"
+ * These create visual hierarchy in monospace layouts.
+ */
+.tui-label {
+  color: var(--text-dim);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-sm);
+}
+
+/* ── TUI Divider ──────────────────────────────────────────── */
+.tui-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: var(--space-md) 0;
+}
+
+/* ── TUI List ───────────────────────────────────────────────
+ * Navigable list with j/k keys. One item is always "selected"
+ * (highlighted). The ▸ indicator shows current selection.
+ */
+.tui-list {
+  list-style: none;
+}
+
+.tui-list__item {
+  padding: var(--space-xs) var(--space-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: default;
+}
+
+.tui-list__item--selected {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.tui-list__indicator {
+  color: var(--accent-blue);
+  width: 16px;
+  flex-shrink: 0;
+}
+
+/* ── TUI Input ────────────────────────────────────────────── */
+.tui-input {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: var(--space-sm) var(--space-md);
+  outline: none;
+  width: 100%;
+}
+
+.tui-input:focus {
+  border-color: var(--accent-blue);
+}
+
+.tui-input::placeholder {
+  color: var(--text-dim);
+}
+
+/* ── TUI Progress Bar ───────────────────────────────────────
+ * Uses block characters: █ for filled, ░ for empty.
+ * But we render it with CSS for better control.
+ */
+.tui-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.tui-progress__bar {
+  display: flex;
+  gap: 1px;
+}
+
+.tui-progress__segment {
+  width: 8px;
+  height: 14px;
+  background: var(--bg-tertiary);
+}
+
+.tui-progress__segment--filled {
+  background: var(--accent-green);
+}
+
+.tui-progress__text {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* ── TUI Status Indicators ────────────────────────────────── */
+.status-idle { color: var(--text-dim); }
+.status-active { color: var(--accent-green); }
+.status-sealed { color: var(--accent-red); }
+.status-warning { color: var(--accent-yellow); }
+
+/* ── TUI Timer (large centered countdown) ─────────────────── */
+.tui-timer {
+  font-size: 48px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
+.tui-timer__label {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+/* ── Blocked Log Entry ────────────────────────────────────── */
+.blocked-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) 0;
+  color: var(--text-dim);
+}
+
+.blocked-entry__icon {
+  color: var(--accent-red);
+}
+
+.blocked-entry__time {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+/* ── Utility ──────────────────────────────────────────────── */
+.flex-row { display: flex; flex-direction: row; }
+.flex-col { display: flex; flex-direction: column; }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.gap-lg { gap: var(--space-lg); }
+.mt-sm { margin-top: var(--space-sm); }
+.mt-md { margin-top: var(--space-md); }
+.mb-sm { margin-bottom: var(--space-sm); }
+.mb-md { margin-bottom: var(--space-md); }
+
+/* ── Scrollbar (keep it minimal and dark) ─────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
