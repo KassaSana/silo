@@ -1,6 +1,6 @@
 # silo — Claude Code quickstart
 
-> Read `SILO_DESIGN.md` first. It's the full product spec.
+> Read `design.md` first. It's the full product spec.
 
 ## What you're building
 
@@ -45,8 +45,8 @@ Ship **workspace-first lockdown** with these features:
 
 ## Key files
 
-- `SILO_DESIGN.md` — full spec: architecture, all 9 screen mockups, SQLite schema, blocking mechanisms, rationale
-- `SILO_DESIGN.md` > "UI specification" — screen-by-screen ASCII mockups
-- `SILO_DESIGN.md` > "Data model" — complete SQLite schema
-- `SILO_DESIGN.md` > "File structure" — expected project layout
-- `SILO_DESIGN.md` > "Training mode" — planned post-MVP keyboard drill feature (design now, build later)
+- `design.md` — full spec: architecture, all 9 screen mockups, SQLite schema, blocking mechanisms, rationale
+- `design.md` > "UI specification" — screen-by-screen ASCII mockups
+- `design.md` > "Data model" — complete SQLite schema
+- `design.md` > "File structure" — expected project layout
+- `design.md` > "Training mode" — planned post-MVP keyboard drill feature (design now, build later); implementation scoped in `checklist.md` Phase 7
