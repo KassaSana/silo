@@ -8,6 +8,7 @@ import (
 	"silo/app/session"
 	"silo/app/stats"
 	"silo/app/store"
+	"silo/app/validate"
 	"silo/app/workspace"
 )
 
@@ -64,14 +65,87 @@ func (a *App) CreateWorkspace(name string, apps, sites []string, obsVault, obsNo
 	if a.workspace == nil {
 		return workspace.Workspace{}, fmt.Errorf("not initialized")
 	}
-	return a.workspace.Create(name, apps, sites, obsVault, obsNote, templateSrc)
+	cleanName, cleanApps, cleanSites, cleanVault, cleanNote, err := validateWorkspaceInputs(name, apps, sites, obsVault, obsNote)
+	if err != nil {
+		return workspace.Workspace{}, err
+	}
+	return a.workspace.Create(cleanName, cleanApps, cleanSites, cleanVault, cleanNote, templateSrc)
 }
 
 func (a *App) UpdateWorkspace(id, name string, apps, sites []string, obsVault, obsNote string) (workspace.Workspace, error) {
 	if a.workspace == nil {
 		return workspace.Workspace{}, fmt.Errorf("not initialized")
 	}
-	return a.workspace.Update(id, name, apps, sites, obsVault, obsNote)
+	cleanName, cleanApps, cleanSites, cleanVault, cleanNote, err := validateWorkspaceInputs(name, apps, sites, obsVault, obsNote)
+	if err != nil {
+		return workspace.Workspace{}, err
+	}
+	return a.workspace.Update(id, cleanName, cleanApps, cleanSites, cleanVault, cleanNote)
+}
+
+// validateWorkspaceInputs is the shared boundary check for Create + Update.
+// All fields are normalised (control chars stripped, whitespace trimmed) and
+// rejected if invalid. Domain validation is strict because these values end up
+// concatenated into /etc/hosts entries downstream.
+func validateWorkspaceInputs(name string, apps, sites []string, obsVault, obsNote string) (
+	string, []string, []string, string, string, error,
+) {
+	cleanName, err := validate.Text(name, validate.MaxTextLen)
+	if err != nil {
+		return "", nil, nil, "", "", fmt.Errorf("workspace name: %w", err)
+	}
+	cleanApps := make([]string, 0, len(apps))
+	for i, a := range apps {
+		v, err := validate.AppName(a)
+		if err != nil {
+			return "", nil, nil, "", "", fmt.Errorf("app #%d (%q): %w", i+1, a, err)
+		}
+		cleanApps = append(cleanApps, v)
+	}
+	cleanSites := make([]string, 0, len(sites))
+	for i, s := range sites {
+		// Trim whitespace at the boundary — common when users paste — but
+		// Domain() itself rejects any in-string whitespace.
+		trimmed := trimSpaceStrict(s)
+		if err := validate.Domain(trimmed); err != nil {
+			return "", nil, nil, "", "", fmt.Errorf("site #%d (%q): %w", i+1, s, err)
+		}
+		cleanSites = append(cleanSites, trimmed)
+	}
+	cleanVault, err := validate.Path(obsVault)
+	if err != nil {
+		return "", nil, nil, "", "", fmt.Errorf("obsidian vault: %w", err)
+	}
+	cleanNote, err := validate.Path(obsNote)
+	if err != nil {
+		return "", nil, nil, "", "", fmt.Errorf("obsidian note: %w", err)
+	}
+	return cleanName, cleanApps, cleanSites, cleanVault, cleanNote, nil
+}
+
+// trimSpaceStrict trims ASCII whitespace only (space, tab, CR, LF). We don't
+// use strings.TrimSpace because it's Unicode-aware and we want byte-exact
+// behaviour for domains.
+func trimSpaceStrict(s string) string {
+	start := 0
+	for start < len(s) {
+		c := s[start]
+		if c == ' ' || c == '\t' || c == '\r' || c == '\n' {
+			start++
+			continue
+		}
+		break
+	}
+	end := len(s)
+	for end > start {
+		c := s[end-1]
+		if c == ' ' || c == '\t' || c == '\r' || c == '\n' {
+			end--
+			continue
+		}
+		break
+	}
+	return s[start:end]
 }
 
 func (a *App) DeleteWorkspace(id string) error {
@@ -89,9 +163,15 @@ func (a *App) CreateFromTemplate(templateName, workspaceName string) (workspace.
 	if a.workspace == nil {
 		return workspace.Workspace{}, fmt.Errorf("not initialized")
 	}
+	// Only the user-supplied workspace name needs validation here; template
+	// apps/sites come from BuiltinTemplates() (trusted constants).
+	cleanName, err := validate.Text(workspaceName, validate.MaxTextLen)
+	if err != nil {
+		return workspace.Workspace{}, fmt.Errorf("workspace name: %w", err)
+	}
 	for _, t := range workspace.BuiltinTemplates() {
 		if t.Name == templateName {
-			return a.workspace.Create(workspaceName, t.Apps, t.Sites, "", "", templateName)
+			return a.workspace.Create(cleanName, t.Apps, t.Sites, "", "", templateName)
 		}
 	}
 	return workspace.Workspace{}, fmt.Errorf("template %q not found", templateName)
@@ -107,6 +187,24 @@ func (a *App) SealWorkspace(workspaceID, task, firstStep string,
 		return nil, fmt.Errorf("not initialized")
 	}
 
+	// Task + first step flow into SQLite, into the Obsidian daily note markdown,
+	// and into the block page UI. Strip control chars at the boundary so a
+	// pasted newline doesn't break the markdown format downstream.
+	cleanTask, err := validate.Text(task, validate.MaxTextLen)
+	if err != nil {
+		return nil, fmt.Errorf("task description: %w", err)
+	}
+	cleanFirstStep, err := validate.Text(firstStep, validate.MaxTextLen)
+	if err != nil {
+		return nil, fmt.Errorf("first step: %w", err)
+	}
+	if durationMinutes <= 0 || durationMinutes > 24*60 {
+		return nil, fmt.Errorf("duration out of range (1-1440 minutes)")
+	}
+	if lockChars < 0 || lockChars > 10_000 {
+		return nil, fmt.Errorf("lock length out of range")
+	}
+
 	// Get workspace to know what's allowed
 	ws, err := a.workspace.Get(workspaceID)
 	if err != nil {
@@ -114,7 +212,7 @@ func (a *App) SealWorkspace(workspaceID, task, firstStep string,
 	}
 
 	return a.session.Seal(
-		workspaceID, ws.Name, task, firstStep,
+		workspaceID, ws.Name, cleanTask, cleanFirstStep,
 		session.LockType(lockType), lockChars, durationMinutes,
 		ws.AllowedApps, ws.AllowedSites,
 		ws.ObsidianVault, ws.ObsidianNote,
@@ -145,7 +243,26 @@ func (a *App) AddException(exceptionType, value, confirmation string) error {
 	if a.session == nil {
 		return fmt.Errorf("not initialized")
 	}
-	return a.session.AddException(exceptionType, value)
+	// Exception values flow straight into the live blocker (hosts file or
+	// process allowlist). Validate by type — a "site" exception is a domain,
+	// an "app" exception is a process name.
+	var cleanValue string
+	var err error
+	switch exceptionType {
+	case "site":
+		cleanValue = trimSpaceStrict(value)
+		if err = validate.Domain(cleanValue); err != nil {
+			return fmt.Errorf("exception site: %w", err)
+		}
+	case "app":
+		cleanValue, err = validate.AppName(value)
+		if err != nil {
+			return fmt.Errorf("exception app: %w", err)
+		}
+	default:
+		return fmt.Errorf("unknown exception type %q (expected site or app)", exceptionType)
+	}
+	return a.session.AddException(exceptionType, cleanValue)
 }
 
 // CompleteSession finishes the session with a commit message.
@@ -153,7 +270,17 @@ func (a *App) CompleteSession(commitMessage string) error {
 	if a.session == nil {
 		return fmt.Errorf("not initialized")
 	}
-	return a.session.Complete(commitMessage)
+	// Commit message is optional (empty = "no message"), but if provided
+	// it must be sanitised because it's written into the Obsidian daily note.
+	cleanMsg := commitMessage
+	if commitMessage != "" {
+		c, err := validate.Text(commitMessage, validate.MaxTextLen)
+		if err != nil {
+			return fmt.Errorf("commit message: %w", err)
+		}
+		cleanMsg = c
+	}
+	return a.session.Complete(cleanMsg)
 }
 
 // GetBlockedAttempts returns recently blocked processes for the UI.

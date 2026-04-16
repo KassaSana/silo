@@ -52,15 +52,26 @@ func (e *Engine) Engage(allowedApps, allowedSites []string, workspaceName, taskD
 		return fmt.Errorf("start block page: %w", err)
 	}
 
-	// 2. Modify hosts file (blocks websites)
+	// 2. Modify hosts file (blocks websites).
+	// Fail-closed: if Block errors, /etc/hosts may have been partially written
+	// (backup taken, new content rejected mid-write). We MUST restore before
+	// returning — a half-applied block is worse than no block. Per CLAUDE.md:
+	// "If hosts write fails mid-seal, restore from backup before returning."
 	distractions := DistractionDomains()
 	if err := e.hosts.Block(distractions, allowedSites); err != nil {
-		// Rollback: stop block page
+		// Attempt restore. If that also fails, surface the double-failure
+		// so the UI can warn the user their hosts file may be in a bad
+		// state — never silently swallow this.
+		if rerr := e.hosts.Restore(); rerr != nil {
+			e.blockPage.Stop()
+			return fmt.Errorf("block websites: %w (and restore failed: %v — /etc/hosts may be inconsistent)", err, rerr)
+		}
 		e.blockPage.Stop()
 		return fmt.Errorf("block websites: %w", err)
 	}
 
-	// 3. Protect the hosts file from manual edits
+	// 3. Protect the hosts file from manual edits. If this fails the block
+	// is still in place, so we warn-and-continue rather than unwinding.
 	if err := protectHostsFile(); err != nil {
 		fmt.Printf("warning: could not protect hosts file: %v\n", err)
 	}
