@@ -83,7 +83,7 @@ export function Stats({ onNavigate }: StatsProps) {
         <div className="tui-label">focus summary</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <span className="text-dim" style={{ width: '90px' }}>today</span>
+            <span className="tui-label" style={{ width: '80px', marginBottom: 0 }}>today</span>
             <ProgressBar
               filled={Math.min(12, Math.round((summary.today_minutes / 480) * 12))}
               total={12}
@@ -91,7 +91,7 @@ export function Stats({ onNavigate }: StatsProps) {
             />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <span className="text-dim" style={{ width: '90px' }}>this week</span>
+            <span className="tui-label" style={{ width: '80px', marginBottom: 0 }}>this week</span>
             <ProgressBar
               filled={Math.min(12, Math.round((summary.week_minutes / 2400) * 12))}
               total={12}
@@ -99,7 +99,7 @@ export function Stats({ onNavigate }: StatsProps) {
             />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <span className="text-dim" style={{ width: '90px' }}>streak</span>
+            <span className="tui-label" style={{ width: '80px', marginBottom: 0 }}>streak</span>
             <span className="text-green">{streakDots(summary.streak_days)} {summary.streak_days} days</span>
           </div>
         </div>

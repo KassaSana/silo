@@ -93,3 +93,179 @@
 - [ ] 6.2 Edge cases (VPN, custom DNS, multiple browsers, browser DoH bypass)
 - [ ] 6.3 App icon + metadata — `wails.json` missing version/copyright; `build/darwin/Info.plist` still template
 - [ ] 6.4 Installers (.dmg / .msi) — `build/windows/installer/project.nsi` is default NSIS
+
+---
+
+## Phase 7: Flow State Mode (keybind drills)
+
+> The core idea: during a sealed session you still have several allowed tools (editor, terminal, browser). Mouse-driven switching between them kills flow. This mode trains keyboard muscle memory so in-session context switches take ~1 sec instead of ~10 sec. Available from the **idle** dashboard only.
+
+- [ ] 7.1 Flow mode screen (`frontend/src/screens/FlowMode.tsx`) + `[f]` shortcut on dashboard
+- [ ] 7.2 `useKeyCapture` hook — intercept multi-key combos without triggering OS actions (preventDefault + stopPropagation, escape-hatch to bail out)
+- [ ] 7.3 Platform detection — expose `runtime.GOOS` as a Wails binding, show Mac vs Windows shortcut automatically
+- [ ] 7.4 Drill engine — 10 drills per round, shuffled, score + speed per drill
+- [ ] 7.5 SQLite: `training_scores` + `custom_drills` tables (spec in `design.md:752`)
+- [ ] 7.6 Category sets (below) — ship as built-in JSON, user can override/add via editor
+- [ ] 7.7 Visual feedback — green flash on correct, red + correct answer on wrong, 1s pause then advance
+- [ ] 7.8 Speed analytics — running avg, best streak, per-category heatmap
+- [ ] 7.9 Hints toggle — `[h]` shows the key combo before you answer (training wheels on/off)
+
+### 7.A Built-in drill sets — full keybind inventory
+
+**macOS system switching**
+
+| Action | Keys |
+|---|---|
+| Next app | `Cmd + Tab` |
+| Previous app | `Cmd + Shift + Tab` |
+| Cycle windows of current app | `Cmd + \`` |
+| Reverse-cycle same-app windows | `Cmd + Shift + \`` |
+| Hide current app | `Cmd + H` |
+| Hide other apps | `Cmd + Option + H` |
+| Minimize window | `Cmd + M` |
+| Close window | `Cmd + W` |
+| Quit app | `Cmd + Q` |
+| Force Quit dialog | `Cmd + Option + Esc` |
+| Spotlight | `Cmd + Space` |
+| Next space/desktop | `Ctrl + →` |
+| Previous space/desktop | `Ctrl + ←` |
+| Mission Control | `Ctrl + ↑` or `F3` |
+| App Exposé (current app's windows) | `Ctrl + ↓` |
+| Show desktop | `F11` or `Fn + F11` |
+
+**Windows system switching**
+
+| Action | Keys |
+|---|---|
+| Next app | `Alt + Tab` |
+| Previous app | `Alt + Shift + Tab` |
+| Task View (persistent switcher) | `Win + Tab` |
+| Show desktop | `Win + D` |
+| File Explorer | `Win + E` |
+| Lock screen | `Win + L` |
+| Snap left / right | `Win + ← / →` |
+| Maximize | `Win + ↑` |
+| Restore / minimize | `Win + ↓` |
+| Next virtual desktop | `Win + Ctrl + →` |
+| Previous virtual desktop | `Win + Ctrl + ←` |
+| New virtual desktop | `Win + Ctrl + D` |
+| Close virtual desktop | `Win + Ctrl + F4` |
+| Task Manager | `Ctrl + Shift + Esc` |
+| Close window | `Alt + F4` |
+| Search | `Win + S` |
+
+**Chrome / Firefox / Arc (browser navigation)**
+
+| Action | macOS | Windows |
+|---|---|---|
+| Focus address bar | `Cmd + L` | `Ctrl + L` |
+| New tab | `Cmd + T` | `Ctrl + T` |
+| Close tab | `Cmd + W` | `Ctrl + W` |
+| Reopen closed tab | `Cmd + Shift + T` | `Ctrl + Shift + T` |
+| Next tab | `Cmd + Option + →` | `Ctrl + Tab` |
+| Previous tab | `Cmd + Option + ←` | `Ctrl + Shift + Tab` |
+| Jump to tab 1..8 | `Cmd + 1..8` | `Ctrl + 1..8` |
+| Jump to last tab | `Cmd + 9` | `Ctrl + 9` |
+| Find in page | `Cmd + F` | `Ctrl + F` |
+| Reload | `Cmd + R` | `Ctrl + R` |
+| Hard reload | `Cmd + Shift + R` | `Ctrl + Shift + R` |
+| Back / Forward | `Cmd + [ / ]` | `Alt + ← / →` |
+| Scroll down / up | `Space / Shift+Space` | `Space / Shift+Space` |
+| Bookmark page | `Cmd + D` | `Ctrl + D` |
+| Full screen | `Cmd + Ctrl + F` | `F11` |
+
+**VS Code (editor)**
+
+| Action | macOS | Windows |
+|---|---|---|
+| Quick open file | `Cmd + P` | `Ctrl + P` |
+| Command palette | `Cmd + Shift + P` | `Ctrl + Shift + P` |
+| Toggle terminal | `Cmd + \`` | `Ctrl + \`` |
+| Toggle sidebar | `Cmd + B` | `Ctrl + B` |
+| Split editor | `Cmd + \\` | `Ctrl + \\` |
+| Focus editor group 1/2/3 | `Cmd + 1/2/3` | `Ctrl + 1/2/3` |
+| Workspace search | `Cmd + Shift + F` | `Ctrl + Shift + F` |
+| Go to definition | `F12` | `F12` |
+| Navigate back / forward | `Ctrl + - / Ctrl + Shift + -` | `Alt + ← / →` |
+| Toggle line comment | `Cmd + /` | `Ctrl + /` |
+| Select next occurrence | `Cmd + D` | `Ctrl + D` |
+| Rename symbol | `F2` | `F2` |
+
+**Terminal (bash/zsh — readline)**
+
+| Action | Keys |
+|---|---|
+| Cursor to line start | `Ctrl + A` |
+| Cursor to line end | `Ctrl + E` |
+| Delete to line start | `Ctrl + U` |
+| Delete to line end | `Ctrl + K` |
+| Delete previous word | `Ctrl + W` |
+| Reverse history search | `Ctrl + R` |
+| Clear screen | `Ctrl + L` |
+| Interrupt (SIGINT) | `Ctrl + C` |
+| Suspend (SIGTSTP) | `Ctrl + Z` |
+| EOF / exit | `Ctrl + D` |
+| Word forward | `Option/Alt + →` |
+| Word backward | `Option/Alt + ←` |
+| Autocomplete | `Tab` |
+
+**Silo itself (meta-drill — so users learn silo too)**
+
+| Action | Keys |
+|---|---|
+| Seal selected workspace | `Enter` |
+| New workspace | `N` |
+| Edit selected | `E` |
+| Template picker | `T` |
+| Stats | `S` |
+| Flow drills | `F` (post-7.1) |
+| Quick exception (during seal) | `X` |
+| Attempt unlock | `U` |
+| Quit | `Q` |
+
+### 7.B Nice-to-haves layered on top
+
+- [ ] Custom drill JSON import/export — user can author their own sets for Figma, Logic, Photoshop, etc.
+- [ ] "Drill this while sealed" mode — during an active seal, a corner of the screen prompts a single drill every N minutes. Micro-interruption that reinforces muscle memory.
+- [ ] Per-tool profile detection — if workspace includes `VS Code`, pre-seed the VS Code drill set for practice before sealing.
+
+---
+
+## Phase 8: Integrations (beyond base Obsidian)
+
+> Pick one or two; integration sprawl is its own distraction. The goal is: silo becomes the seam between "deciding to focus" and every other tool you already use.
+
+- [ ] 8.1 **Obsidian deeper** — parse `- [ ] task` checkboxes from the linked note, show them as a checklist on the active-seal screen so the user sees *their own* plan while sealed. On completion, auto-check completed items and append commit message as a child bullet. Uses file-watching so silo reacts to edits the user makes in Obsidian during the session.
+- [ ] 8.2 **Calendar integration (local only)** — point silo at a local `.ics` file (iCloud/Google export). Events titled `Deep Work: *` trigger a pre-seal prompt 5 min before the block. No cloud auth required for MVP.
+- [ ] 8.3 **Git integration** — when the workspace folder is a git repo (configurable), on session complete run `git log --since="started_at"` and save the commit list alongside the commit message. Visible progress trail.
+- [ ] 8.4 **Slack / Discord presence** — optional webhook URL in settings. On seal, POST status "Focusing — back at HH:MM". On unseal, POST "done — X minutes focused." Fire-and-forget; failures non-fatal.
+- [ ] 8.5 **iOS / Android bridge via Shortcuts/Tasker** — silo exposes a local HTTP endpoint `POST /seal` that Apple Shortcuts / Tasker can hit. Users wire their own "when silo seals, enable phone DND + Screen Time block" automation. Silo doesn't own the phone, just signals it.
+- [ ] 8.6 **Music auto-pilot (opt-in)** — on seal: play a saved Spotify/Apple Music URI (user-configured). On unseal: pause. Uses `osascript` / `mpris` — no SDK.
+- [ ] 8.7 **Browser tab broom** — on seal, request browsers close every tab whose URL isn't in `allowed_sites`. macOS: AppleScript. Windows: browser extension (ships as 9.1 below).
+- [ ] 8.8 **Obsidian plugin (reverse)** — a companion plugin so from inside Obsidian you can press a command to seal the workspace linked to the current note. Bi-directional loop.
+
+---
+
+## Phase 9: ADHD-specific mechanics
+
+> These go beyond the "block and forget" model. They lean into the ADHD brain's actual reward/attention patterns.
+
+- [ ] 9.1 **Body doubling mode** — optional peer pairing. Two silo users each type a short code into each other's app; each sees a minimal card on their active-seal screen with the other person's workspace name and remaining time. Purely social pressure. Runs over local discovery + ephemeral relay (no accounts).
+- [ ] 9.2 **Drift check-ins** — every 15 min during seal, a subtle one-line prompt slides in at the bottom: "what are you doing right now?" User types one word or ignores. Builds self-awareness; the typed responses become a session-level journal.
+- [ ] 9.3 **Escalating exit tasks** — today, a quick exception requires typing "i need this." Add an escalation ladder: 1st exception: type phrase. 2nd: solve a simple arithmetic problem. 3rd: record a 10s voice memo saying why. Each step increases activation cost of impulse-breakage. Data proves it: the harder the ritual, the rarer the breach.
+- [ ] 9.4 **Post-session retrospective** — after commit message, show a follow-up: "did you actually work on this, or something adjacent? (y/n + optional note)". Trains self-awareness, feeds stats page accuracy.
+- [ ] 9.5 **Variable reward pings** — RANDOM (not scheduled) small treats during a seal: a good-job line, a streak flame, a tiny ASCII animation. ADHD brains respond to variable reinforcement more than fixed. Must be muted by default + heavily user-gated.
+- [ ] 9.6 **Cold start "ramp" mode** — optional 5-minute "warm-up" at seal start: ONLY the workspace note + editor unlocked (no browser even if allowed). Reduces the "open browser first out of habit" trap.
+- [ ] 9.7 **Idle detection** — if keyboard + mouse idle for 5 min during seal, show a gentle "are you still here?" modal. Pause timer on "step away" confirmation; resume on return. Stops inflated focus hours from AFK time.
+
+---
+
+## Phase 10: Platform hardening (post-MVP from design.md)
+
+- [ ] 10.1 Watchdog / guardian process — `com.silo.guardian.plist` LaunchDaemon on macOS, Windows Service on Windows. Two-process pact so killing one isn't enough.
+- [ ] 10.2 pf firewall (macOS) / WFP (Windows) — true whitelist enforcement. Eliminates DoH bypass entirely.
+- [ ] 10.3 Browser extension — URL-path-level filtering (current block list is domain-only). Also powers §8.7 tab-broom.
+- [ ] 10.4 CLI companion — `silo seal --workspace X --duration 90m`, local Unix-socket / named-pipe to the running Go backend.
+- [ ] 10.5 Sprint mode — adaptive Pomodoro: 25/5, 50/10, 90/15. Each sub-block is its own mini-seal; the outer lock governs the total.
+- [ ] 10.6 Scheduled seals — recurring weekly slots ("every weekday 9-11am: coding workspace, auto-seal"). Depends on §8.2 calendar work.
+- [ ] 10.7 Ambient sounds — white noise / brown noise / cafe. Ships as compressed WAV in `assets/`, no network dep.

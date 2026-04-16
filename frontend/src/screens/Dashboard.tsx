@@ -93,7 +93,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 </span>
                 <span style={{ display: 'flex', gap: '16px' }}>
                   <span className="text-dim">
-                    {(ws.allowed_sites || []).length} sites · {(ws.allowed_apps || []).length} apps
+                    {pluralize((ws.allowed_sites || []).length, 'site')} · {pluralize((ws.allowed_apps || []).length, 'app')}
                   </span>
                   <span className="text-dim">○ idle</span>
                 </span>
@@ -130,8 +130,14 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
       <TuiFooter
         actions={[
-          { key: 'enter', label: 'seal' },
-          { key: 'e', label: 'edit' },
+          // enter/edit only make sense with at least one workspace — hide them
+          // on empty state so the footer doesn't advertise dead keys.
+          ...(workspaces.length > 0
+            ? [
+                { key: 'enter', label: 'seal' },
+                { key: 'e', label: 'edit' },
+              ]
+            : []),
           { key: 'n', label: 'new' },
           { key: 't', label: 'templates' },
           { key: 's', label: 'stats' },
@@ -146,4 +152,8 @@ function formatMinutes(min: number): string {
   const h = Math.floor(min / 60)
   const m = min % 60
   return `${h}h ${m.toString().padStart(2, '0')}m`
+}
+
+function pluralize(n: number, noun: string): string {
+  return `${n} ${noun}${n === 1 ? '' : 's'}`
 }
