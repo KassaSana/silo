@@ -36,8 +36,10 @@ func New() (*Store, error) {
 		return nil, fmt.Errorf("resolve db path: %w", err)
 	}
 
-	// Ensure the directory exists
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+	// Ensure the directory exists. 0700 because the SQLite file lives here
+	// and may contain user task descriptions, timestamps, etc. — user-only
+	// access matches the file permission we enforce below.
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0700); err != nil {
 		return nil, fmt.Errorf("create db directory: %w", err)
 	}
 
@@ -57,6 +59,18 @@ func New() (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
+
+	// Enforce user-only permissions on the db + WAL sidecars.
+	// CLAUDE.md requires 0600. We chmod AFTER Ping so the files definitely
+	// exist — SQLite creates them lazily. A looser umask on the host would
+	// otherwise leave silo.db world-readable on first run.
+	// WHY also chmod the parent dir: a prior run may have created ~/.silo
+	// with 0755 before this hardening landed; MkdirAll is a no-op in that case.
+	if err := os.Chmod(filepath.Dir(dbPath), 0700); err != nil {
+		// Non-fatal: db itself is still chmod'd below. Log and continue.
+		fmt.Printf("warn: chmod db dir: %v\n", err)
+	}
+	tightenDBPerms(dbPath)
 
 	store := &Store{DB: db}
 
@@ -82,4 +96,27 @@ func dbFilePath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(home, ".silo", "silo.db"), nil
+}
+
+// tightenDBPerms chmods silo.db and its WAL sidecars (-wal, -shm) to 0600.
+//
+// WHY all three: WAL mode splits the database into three files. The -wal and
+// -shm contain page images for in-flight transactions — functionally part of
+// the database, and equally sensitive. Leaving them 0644 defeats the purpose
+// of locking down silo.db itself.
+//
+// Best-effort: chmod failures are logged but don't abort app startup. A user
+// on Windows (where Unix permissions don't apply) gets a harmless error.
+func tightenDBPerms(dbPath string) {
+	for _, suffix := range []string{"", "-wal", "-shm"} {
+		p := dbPath + suffix
+		// Skip sidecars that don't exist yet (SQLite creates them lazily
+		// on first write; a brand-new db won't have them).
+		if _, err := os.Stat(p); err != nil {
+			continue
+		}
+		if err := os.Chmod(p, 0600); err != nil {
+			fmt.Printf("warn: chmod %s: %v\n", p, err)
+		}
+	}
 }

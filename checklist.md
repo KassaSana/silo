@@ -56,7 +56,8 @@
   - **What:** `session.go` — full lifecycle manager. Writes session to SQLite on seal (crash recovery). Records workspace, task, lock, duration, exceptions, breach attempts. Updates daily_stats on completion.
 - [x] 4.3 Countdown timer (Go goroutine -> Wails events)
   - **What:** `timer.go` — Go goroutine ticks every second, emits "timer:tick" event with remaining/elapsed/formatted. Emits "timer:done" on expiry. Frontend listens with EventsOn().
-- [x] 4.4 Obsidian auto-open on seal — deferred to integration pass
+- [x] 4.4 Obsidian auto-open on seal
+  - **What:** `workspace.OpenNote` launches `obsidian://open?vault=X&file=Y` via OS URL handler. Wired in `app/session/session.go:148`. No-op when vault or note is empty (opt-in).
 - [x] 4.5 ActiveSeal screen with timer + blocked log
   - **What:** Big centered countdown, session info, blocked process log (polled every 2s). Completion phase with commit message input.
 - [x] 4.6 QuickException screen + live allowlist update
@@ -69,18 +70,26 @@
   - **What:** Shows lock text in rows, textarea for typing, progress counter, escalation warning.
 - [x] 4.10 Escalating lock (200 -> 400 -> 600)
   - **What:** Each failed attempt regenerates longer text. EscalateChars(attempt, 200, 200) = 200 + (attempt-1)*200.
-- [ ] 4.11 Obsidian daily note append on complete — deferred to polish pass
+- [x] 4.11 Obsidian daily note append on complete
+  - **What:** `workspace.AppendToDailyNote` writes a markdown block to `<vault>/<note path>`, resolving `{date}` templates and auto-creating parent dirs. Wired in `app/session/session.go:390`. Covered by `app/workspace/obsidian_test.go`.
 
 ## Phase 5: Stats & Polish
-- [ ] 5.1 Stats queries + streak calculation
-- [ ] 5.2 Stats screen with session history
-- [ ] 5.3 JSON export
-- [ ] 5.4 System tray icon
-- [ ] 5.5 DND integration
-- [ ] 5.6 Crash recovery from SQLite
+- [x] 5.1 Stats queries + streak calculation
+  - **What:** `app/stats/stats.go` — `GetSummary` (today/week/lifetime) and `calcStreak` with a one-day grace period. Unit tests in `app/stats/stats_test.go`.
+- [x] 5.2 Stats screen with session history
+  - **What:** `frontend/src/screens/Stats.tsx` — wired to real SQLite via `GetStatsSummary` + `GetRecentSessions`. Streak dots, progress bars, scrollable recent sessions.
+- [x] 5.3 JSON export
+  - **What:** `stats.ExportJSON` in `app/stats/stats.go:227`. Frontend copies to clipboard from `Stats.tsx:56`. Save-dialog upgrade listed as P2 in the implementation plan.
+- [ ] 5.4 System tray icon — deferred to P1 (needs `getlantern/systray` dep + icon asset)
+- [x] 5.5 DND integration
+  - **What:** `app/platform/dnd_darwin.go` (Shortcuts app) + `dnd_windows.go`. Toggled from `session.go:155` (enable) and `:360` (disable), gated by the `dnd_integration` setting.
+- [x] 5.6 Crash recovery from SQLite
+  - **What:** `session.RecoverInterrupted` called from `app.go:42` on startup — marks any sessions left in `active` status as interrupted and cleans orphaned hosts entries via `blocker.CleanupOrphanedHosts`.
 
 ## Phase 6: Hardening
-- [ ] 6.1 Cross-platform testing
-- [ ] 6.2 Edge cases (VPN, custom DNS, multiple browsers)
-- [ ] 6.3 App icon + metadata
-- [ ] 6.4 Installers (.dmg / .msi)
+- [x] 6.0 Security boundary (P0 — 2026-04-16)
+  - **What:** Input validation package at `app/validate/validate.go` wired into every Wails binding in `app.go` that accepts untrusted input. SQLite file perms locked to 0600 with dir at 0700 (`app/store/db.go`). Fail-closed hosts restore in `app/blocker/blocker.go` when `hosts.Block` errors. Unit tests cover injection vectors, escalation math, streak boundaries, Obsidian markdown, and template shape.
+- [ ] 6.1 Cross-platform testing — Windows path untested on real hardware
+- [ ] 6.2 Edge cases (VPN, custom DNS, multiple browsers, browser DoH bypass)
+- [ ] 6.3 App icon + metadata — `wails.json` missing version/copyright; `build/darwin/Info.plist` still template
+- [ ] 6.4 Installers (.dmg / .msi) — `build/windows/installer/project.nsi` is default NSIS
