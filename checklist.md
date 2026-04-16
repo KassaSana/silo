@@ -80,7 +80,9 @@
   - **What:** `frontend/src/screens/Stats.tsx` — wired to real SQLite via `GetStatsSummary` + `GetRecentSessions`. Streak dots, progress bars, scrollable recent sessions.
 - [x] 5.3 JSON export
   - **What:** `stats.ExportJSON` in `app/stats/stats.go:227`. Frontend copies to clipboard from `Stats.tsx:56`. Save-dialog upgrade listed as P2 in the implementation plan.
-- [ ] 5.4 System tray icon — deferred to P1 (needs `getlantern/systray` dep + icon asset)
+- [x] 5.4 System tray icon (close-to-background MVP; full status-bar icon deferred)
+  - **What:** `HideWindowOnClose: true` in `main.go:30` + `HideWindow()` binding at `app.go:195` + `[h] hide` hotkey on Dashboard (`screens/Dashboard.tsx:65`). Closing the window keeps silo running in the background so an active seal survives; the dock/taskbar icon re-surfaces it.
+  - **Why the compromise:** A true macOS status-bar icon needs the main goroutine, which Wails v2 already claims. The full-menu tray is a natural fit for a Wails v3 migration and is parked under Phase 10.8 below.
 - [x] 5.5 DND integration
   - **What:** `app/platform/dnd_darwin.go` (Shortcuts app) + `dnd_windows.go`. Toggled from `session.go:155` (enable) and `:360` (disable), gated by the `dnd_integration` setting.
 - [x] 5.6 Crash recovery from SQLite
@@ -269,3 +271,4 @@
 - [ ] 10.5 Sprint mode — adaptive Pomodoro: 25/5, 50/10, 90/15. Each sub-block is its own mini-seal; the outer lock governs the total.
 - [ ] 10.6 Scheduled seals — recurring weekly slots ("every weekday 9-11am: coding workspace, auto-seal"). Depends on §8.2 calendar work.
 - [ ] 10.7 Ambient sounds — white noise / brown noise / cafe. Ships as compressed WAV in `assets/`, no network dep.
+- [ ] 10.8 **Full status-bar tray icon** — proper macOS `NSStatusItem` + Windows `Shell_NotifyIcon` with a menu (Show / Hide / Current session / Quit) and state-aware icon color (idle = dim, sealed = green). Blocked on Wails v3 migration — v2's event loop conflicts with `getlantern/systray` on the macOS main goroutine. MVP ships close-to-background (see 5.4); this is the upgrade.

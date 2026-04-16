@@ -30,6 +30,10 @@ export function ExportStatsJSON() {
   return window['go']['main']['App']['ExportStatsJSON']();
 }
 
+export function HideWindow() {
+  return window['go']['main']['App']['HideWindow']();
+}
+
 export function GetBlockedAttempts() {
   return window['go']['main']['App']['GetBlockedAttempts']();
 }

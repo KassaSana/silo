@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { TuiBox, TuiHeader, TuiFooter, TuiList, ProgressBar } from '../components'
 import { useNavigation, useKeyboard } from '../hooks'
-import { ListWorkspaces, GetStatsSummary } from '../../wailsjs/go/main/App'
+import { ListWorkspaces, GetStatsSummary, HideWindow } from '../../wailsjs/go/main/App'
 import { workspace, stats } from '../../wailsjs/go/models'
 
 /*
@@ -62,6 +62,9 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     'n': () => onNavigate('workspace-editor'),
     't': () => onNavigate('template-picker'),
     's': () => onNavigate('stats'),
+    // Hide the window; silo keeps running in the background (dock/taskbar).
+    // Active seals survive. Re-surface by clicking the dock icon.
+    'h': () => { HideWindow() },
   }), [onNavigate, workspaces])
   useKeyboard(screenKeys)
 
@@ -141,6 +144,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           { key: 'n', label: 'new' },
           { key: 't', label: 'templates' },
           { key: 's', label: 'stats' },
+          { key: 'h', label: 'hide' },
           { key: 'q', label: 'quit' },
         ]}
       />
