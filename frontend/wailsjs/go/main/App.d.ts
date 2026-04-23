@@ -31,6 +31,8 @@ export function GetTemplates():Promise<Array<workspace.Template>>;
 
 export function GetWorkspace(arg1:string):Promise<workspace.Workspace>;
 
+export function HideWindow():Promise<void>;
+
 export function ListWorkspaces():Promise<Array<workspace.Workspace>>;
 
 export function SealWorkspace(arg1:string,arg2:string,arg3:string,arg4:string,arg5:number,arg6:number):Promise<session.Session>;

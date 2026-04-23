@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { TuiBox, TuiHeader, TuiFooter, TuiList, ProgressBar } from '../components'
 import { useNavigation, useKeyboard } from '../hooks'
-import { ListWorkspaces, GetStatsSummary } from '../../wailsjs/go/main/App'
+import { ListWorkspaces, GetStatsSummary, HideWindow } from '../../wailsjs/go/main/App'
 import { workspace, stats } from '../../wailsjs/go/models'
 
 /*
@@ -62,6 +62,9 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     'n': () => onNavigate('workspace-editor'),
     't': () => onNavigate('template-picker'),
     's': () => onNavigate('stats'),
+    // Hide the window; silo keeps running in the background (dock/taskbar).
+    // Active seals survive. Re-surface by clicking the dock icon.
+    'h': () => { HideWindow() },
   }), [onNavigate, workspaces])
   useKeyboard(screenKeys)
 
@@ -93,7 +96,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 </span>
                 <span style={{ display: 'flex', gap: '16px' }}>
                   <span className="text-dim">
-                    {(ws.allowed_sites || []).length} sites · {(ws.allowed_apps || []).length} apps
+                    {pluralize((ws.allowed_sites || []).length, 'site')} · {pluralize((ws.allowed_apps || []).length, 'app')}
                   </span>
                   <span className="text-dim">○ idle</span>
                 </span>
@@ -130,11 +133,18 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
       <TuiFooter
         actions={[
-          { key: 'enter', label: 'seal' },
-          { key: 'e', label: 'edit' },
+          // enter/edit only make sense with at least one workspace — hide them
+          // on empty state so the footer doesn't advertise dead keys.
+          ...(workspaces.length > 0
+            ? [
+                { key: 'enter', label: 'seal' },
+                { key: 'e', label: 'edit' },
+              ]
+            : []),
           { key: 'n', label: 'new' },
           { key: 't', label: 'templates' },
           { key: 's', label: 'stats' },
+          { key: 'h', label: 'hide' },
           { key: 'q', label: 'quit' },
         ]}
       />
@@ -146,4 +156,8 @@ function formatMinutes(min: number): string {
   const h = Math.floor(min / 60)
   const m = min % 60
   return `${h}h ${m.toString().padStart(2, '0')}m`
+}
+
+function pluralize(n: number, noun: string): string {
+  return `${n} ${noun}${n === 1 ? '' : 's'}`
 }

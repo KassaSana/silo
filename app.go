@@ -10,6 +10,8 @@ import (
 	"silo/app/store"
 	"silo/app/validate"
 	"silo/app/workspace"
+
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type App struct {
@@ -316,4 +318,18 @@ func (a *App) ExportStatsJSON() (string, error) {
 		return "", fmt.Errorf("not initialized")
 	}
 	return a.stats.ExportJSON()
+}
+
+// ── Window bindings ──
+
+// HideWindow tucks silo away without quitting — a sealed session keeps
+// running in the background. Users re-surface it by clicking the dock
+// (macOS) or taskbar (Windows) icon.
+// Pairs with HideWindowOnClose in main.go so the close button does
+// the same thing. The hotkey ('h' on dashboard) is the keyboard path.
+func (a *App) HideWindow() {
+	if a.ctx == nil {
+		return
+	}
+	wailsruntime.WindowHide(a.ctx)
 }
